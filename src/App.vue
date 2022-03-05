@@ -13,16 +13,17 @@
     <!-- <audio id="audio" >
       <source src="../public/music/Ruger_Bounce.mp3" type="audio/mpeg">
     </audio> -->
+    <audio id="audio" :src="(currentSong.songData)"></audio>
     <div class="d-flex justify-content-evenly align-items-center" style="height: 10%">
-      <span>00.00</span>
-      <input type="range"  name=""  id="">
-      <span>03.20</span>
+      <span>{{currentSongPlayTime}}</span>
+      <input type="range" @change="seek" min="0.00" :max="curSongDurInSecs" v-model="progressValue"  name=""  id="">
+      <span>{{currentSongDuration}}</span>
     </div>
     <div class="controlBtnDiv d-flex justify-content-evenly" style="height: 20%">
       <button id="shuffleBtn"><i class="fa fa-random" aria-hidden="true"></i></button>
       <button id="previousBtn"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
-      <button @click="play" id="playBtn"><i class="fa fa-play-circle" aria-hidden="true"></i></button>
-      <button hidden id="pauseBtn"><i class="fa fa-pause-circle" aria-hidden="true"></i></button>
+      <button v-if="!isPlaying" @click="play" id="playBtn"><i class="fa fa-play-circle" aria-hidden="true"></i></button>
+      <button v-if="isPlaying" @click="pause" id="pauseBtn"><i class="fa fa-pause-circle" aria-hidden="true"></i></button>
       <button id="nextBtn"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
       <button id="playlistBtn"><i class="iconify" data-icon="bxs:playlist"></i></button>
     </div>
@@ -66,11 +67,33 @@ export default {
       currentSong: "",
       songs: [
       ],
+      progressValue: 0,
+      curSongDurInSecs: 0,
+      currentSongDuration: "00:00",
+      currentSongPlayTime: "00:00",
+      songIndex: 0,
       isPlaying: false,
+      loadSongData: false,
     }
   },
   methods:{
     init(){
+      
+    },
+    loadSong(index){
+      console.log(index);
+      this.currentSong = this.songs[index]
+      console.log(this.currentSong);
+      document.getElementById('audio').src = this.currentSong.songData
+      document.getElementById('audio').addEventListener('timeupdate', () => {
+        this.updateSlider()
+        this.setCurrentPlayTime()
+      })
+      document.getElementById('audio').addEventListener('loadeddata', () => {
+        this.setCurrentSongDuration()
+        this.loadSongData = true
+        this.curSongDurInSecs = document.querySelector('audio').duration
+      })
       
     },
     readMusicMetadata(){
@@ -82,49 +105,70 @@ export default {
         onSuccess: (result) => {
           console.log(result);
           let rs = 'title' in result.tags
-          console.log(rs)
-          const { data, format } = result.tags.picture;
-          let base64String = "";
-          for (let i = 0; i < data.length; i++) {
-            base64String += String.fromCharCode(data[i]);
-          }
-          this.src = `data:${data.format};base64,${window.btoa(base64String)}`;
           let newSong = {title: "", artist: "", album: "", picture: "", genre: "", year: "", songData: ""}
-          newSong.title = ('title' in result.tags) ? result.tags.title : "Unknown";
+          console.log(rs)
+          if('picture' in result.tags){
+            const { data, format } = result.tags.picture;
+            let base64String = "";
+            for (let i = 0; i < data.length; i++) {
+              base64String += String.fromCharCode(data[i]);
+            }
+            newSong.picture = `data:${data.format};base64,${window.btoa(base64String)}`;
+          }
+          else{
+            newSong.picture = "Unknown"
+          }
+          newSong.title = ('title' in result.tags) ? result.tags.title : file.name;
           newSong.artist = ('artist' in result.tags) ? result.tags.artist : "Unknown";
           newSong.album = ('album' in result.tags) ? result.tags.album : "Unknown";
-          newSong.picture = ('picture' in result.tags) ? result.tags.picture : "Unknown";
           newSong.genre = ('genre' in result.tags) ? result.tags.genre : "Unknown";
           newSong.year = ('year' in result.tags) ? result.tags.year : "Unknown";
           fileReader.readAsDataURL(file)
           fileReader.onload = () => {
             newSong.songData = fileReader.result
             this.songs.push(newSong)
+            this.loadSong(this.songIndex)
+            console.log('done')
           }
         },
         onError:  (error) => {
           console.log(error);
         }
       })
+      
     },
     addSongsToPlaylist(){
       document.getElementById('musicFileSelector').click()
     },
     play(){
-      //let audioObj = new Audio("../public/music/Ruger_Bounce.mp3")
-      // audioObj.addEventListener("canplay", (event) => {
-      //   console.log(event);
-      // })
-      let aud = document.getElementById('audio')
-      // aud.onloadedmetadata = (mess) => {
-      //   console.log('tele');
-      //   console.log(mess);
-      // }
-      aud.play()
-      // console.log(audioObj);
+      document.getElementById('audio').play()
+      this.isPlaying = true
+      // console.log(document.getElementById('audio').duration)
     },
     pause(){
       document.getElementById('audio').pause()
+      this.isPlaying = false
+    },
+    updateSlider(){
+      this.progressValue = document.getElementById('audio').currentTime
+      // document.querySelector('audio')
+    },
+    seek(){
+      if (this.isPlaying == true)
+        document.getElementById('audio').pause()
+      document.getElementById('audio').currentTime = this.progressValue
+      if (this.isPlaying == true)
+        document.getElementById('audio').play()
+    },
+    setCurrentSongDuration(){
+      let minutes = (Math.floor(document.getElementById('audio').duration / 60)).toString().padStart(2,'0');
+      let seconds = (Math.floor(document.getElementById('audio').duration - minutes * 60)).toString().padStart(2,'0');
+      this.currentSongDuration = minutes + ":" + seconds
+    },
+    setCurrentPlayTime(){
+      let minutes = (Math.floor(document.getElementById('audio').currentTime / 60)).toString().padStart(2,'0');
+      let seconds = (Math.floor(document.getElementById('audio').currentTime - minutes * 60)).toString().padStart(2,'0');
+      this.currentSongPlayTime = minutes + ":" + seconds
     },
     playNextSong(){
 
@@ -165,7 +209,7 @@ body {
       button{
         border: none;
       }
-      #playBtn i{
+      #playBtn i, #pauseBtn i{
         font-size: 45px
       }
       #previousBtn i, #nextBtn i, #shuffleBtn i, #playlistBtn svg{
