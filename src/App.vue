@@ -16,7 +16,7 @@
     <audio id="audio" :src="(currentSong.songData)"></audio>
     <div class="d-flex justify-content-evenly align-items-center" style="height: 10%">
       <span>{{currentSongPlayTime}}</span>
-      <input type="range" @change="seek" min="0.00" :max="curSongDurInSecs" v-model="progressValue"  name=""  id="">
+      <input type="range" @input="seek" min="0.00" :max="curSongDurInSecs" v-model="progressValue"  name=""  id="" style="width: 65%">
       <span>{{currentSongDuration}}</span>
     </div>
     <div class="controlBtnDiv d-flex justify-content-evenly" style="height: 20%">
@@ -154,11 +154,7 @@ export default {
       // document.querySelector('audio')
     },
     seek(){
-      if (this.isPlaying == true)
-        document.getElementById('audio').pause()
       document.getElementById('audio').currentTime = this.progressValue
-      if (this.isPlaying == true)
-        document.getElementById('audio').play()
     },
     setCurrentSongDuration(){
       let minutes = (Math.floor(document.getElementById('audio').duration / 60)).toString().padStart(2,'0');
