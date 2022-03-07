@@ -7,7 +7,7 @@
       <h5 class="mb-0" id="nowPlayingTitle">{{currentSong.title}}</h5>
       <h6 id="nowPlayingSinger">{{currentSong.artist}}</h6>
     </div>
-    <div class="text-center" style="height: 40%">
+    <div class="d-flex justify-content-center align-items-center" style="height: 40%">
       <img :src="currentSong.picture" style="width: 150px; height: 150px; border-radius: 100%; border: 2px solid grey" alt="">
     </div>
     <!-- <audio id="audio" >
@@ -34,13 +34,18 @@
     </div>
     <div class="songList">
       <div v-for="(song, index) in songs" :key="index" class="my-1 so_ng p-2 d-flex justify-content-evenly align-items-center">
-        <div class="bg-primary" style="width: 50px; height: 50px; border-radius: 100%;">
-          <img :src="(song.picture != 'Unknown') ? song.picture : '' " style="width: 100%" alt="">
-        </div>
-        <div>
-          <p class="m-0" style="font-size: 17px">{{song.title}}</p>
-          <p class="m-0" style="font-size: 14px">{{song.artist}}</p>
-        </div>
+        <button @click="() => playThisSong(song)" class="d-flex justify-content-center align-item-center" style="width: 90%; background-color: transparent;">
+          <div class="bg-primary" style="width: 50px; height: 50px; border-radius: 100%;">
+            <img :src="(song.picture != 'Unknown') ? song.picture : '' " style="width: 50px; height: 50px;" alt="">
+          </div>
+          <div style="width: 65%; text-align: left;" class="px-3">
+            <p class="m-0" style="font-size: 17px">{{song.title.slice(0,15)}}...</p>
+            <p class="m-0" style="font-size: 14px">{{song.artist.slice(0,15)}}...</p>
+          </div>
+        </button>
+        <button @click="songMenu" style="width: 5%">
+          <i  class="fa fa-ellipsis-v"></i>
+        </button>
       </div>
       
     </div>
@@ -82,6 +87,7 @@ export default {
     },
     loadSong(index){
       this.currentSong = this.songs[index]
+      console.log(this.songs[index]);
       document.getElementById('audio').src = this.currentSong.songData
       document.getElementById('audio').addEventListener('timeupdate', () => {
         this.updateSlider()
@@ -95,7 +101,7 @@ export default {
           document.getElementById('audio').play()
         }
       })
-      
+      document.getElementById('audio').addEventListener('ended', this.playNextSong)
     },
     readMusicMetadata(){
       const jsmediatags = window.jsmediatags
@@ -140,6 +146,17 @@ export default {
     },
     addSongsToPlaylist(){
       document.getElementById('musicFileSelector').click()
+    },
+    playThisSong(song){
+      if (this.currentSong == "") {
+        this.loadSong(this.songs.indexOf(song))
+        this.isPlaying = true
+        return
+      }
+      this.currentSong = song
+      // document.getElementById('audio').src = song.songData
+      this.isPlaying = true
+      console.log(song);
     },
     play(){
       if (this.currentSong == "") {
@@ -190,6 +207,9 @@ export default {
       }
       this.currentSong = this.songs[this.songIndex]
       document.getElementById('audio').src = this.currentSong.songData
+    },
+    songMenu(){
+      console.log("song menu");
     }
   },
   mounted(){
@@ -234,6 +254,16 @@ body {
     .songList{
       max-height: 80%;
       overflow-y: scroll;
+      button:nth-child(1){
+        width: 100%;
+        border: none;
+        
+      }
+      button:last-child {
+          border: none;
+          background-color: transparent;
+      }
+      
     }
     .so_ng{
       background-color: lightgray
