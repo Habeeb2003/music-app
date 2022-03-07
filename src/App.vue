@@ -4,11 +4,11 @@
       <h4 class="text-center py-1" style="border-bottom: 2px solid grey">Play</h4>
     </div>
     <div class="text-center" style="height: 20%; display: grid; place-items: center;">
-      <h5 class="mb-0" id="nowPlayingTitle">Dancing In My Room</h5>
-      <h6 id="nowPlayingSinger">347aidan</h6>
+      <h5 class="mb-0" id="nowPlayingTitle">{{currentSong.title}}</h5>
+      <h6 id="nowPlayingSinger">{{currentSong.artist}}</h6>
     </div>
     <div class="text-center" style="height: 40%">
-      <img src="" style="width: 150px; height: 150px; border-radius: 100%; border: 2px solid grey" alt="">
+      <img :src="currentSong.picture" style="width: 150px; height: 150px; border-radius: 100%; border: 2px solid grey" alt="">
     </div>
     <!-- <audio id="audio" >
       <source src="../public/music/Ruger_Bounce.mp3" type="audio/mpeg">
@@ -21,10 +21,10 @@
     </div>
     <div class="controlBtnDiv d-flex justify-content-evenly" style="height: 20%">
       <button id="shuffleBtn"><i class="fa fa-random" aria-hidden="true"></i></button>
-      <button id="previousBtn"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
+      <button id="previousBtn" @click="playPreviousSong"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
       <button v-if="!isPlaying" @click="play" id="playBtn"><i class="fa fa-play-circle" aria-hidden="true"></i></button>
       <button v-if="isPlaying" @click="pause" id="pauseBtn"><i class="fa fa-pause-circle" aria-hidden="true"></i></button>
-      <button id="nextBtn"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
+      <button id="nextBtn" @click="playNextSong"><i class="fa fa-step-forward" aria-hidden="true"></i></button>
       <button id="playlistBtn"><i class="iconify" data-icon="bxs:playlist"></i></button>
     </div>
   </main>
@@ -45,7 +45,7 @@
       
     </div>
     <div  style="height: 10%;">
-      <button @click="addSongsToPlaylist" style="background-color: lightblue; border: none; width: 100%; height: 100%;">CLICK TO ADD SONG TO PLAYLIST <input type="file" @change="readMusicMetadata" name="" id="musicFileSelector" hidden></button>
+      <button @click="addSongsToPlaylist" style="background-color: lightblue; border: none; width: 100%; height: 100%;">CLICK TO ADD SONG TO PLAYLIST <input type="file" @change="readMusicMetadata" multiple name="" id="musicFileSelector" hidden></button>
     </div>
   </main>
   <!-- <audio controls >
@@ -81,66 +81,75 @@ export default {
       
     },
     loadSong(index){
-      console.log(index);
       this.currentSong = this.songs[index]
-      console.log(this.currentSong);
       document.getElementById('audio').src = this.currentSong.songData
       document.getElementById('audio').addEventListener('timeupdate', () => {
         this.updateSlider()
         this.setCurrentPlayTime()
       })
-      document.getElementById('audio').addEventListener('loadeddata', () => {
+      document.getElementById('audio').addEventListener('loadeddata', async () => {
         this.setCurrentSongDuration()
         this.loadSongData = true
         this.curSongDurInSecs = document.querySelector('audio').duration
+        if (this.isPlaying = true) {
+          document.getElementById('audio').play()
+        }
       })
       
     },
     readMusicMetadata(){
       const jsmediatags = window.jsmediatags
       console.log(jsmediatags);
-      const file = document.getElementById('musicFileSelector').files[0]
-      const fileReader = new FileReader()
-      jsmediatags.read(file, {
-        onSuccess: (result) => {
-          console.log(result);
-          let rs = 'title' in result.tags
-          let newSong = {title: "", artist: "", album: "", picture: "", genre: "", year: "", songData: ""}
-          console.log(rs)
-          if('picture' in result.tags){
-            const { data, format } = result.tags.picture;
-            let base64String = "";
-            for (let i = 0; i < data.length; i++) {
-              base64String += String.fromCharCode(data[i]);
+      const files = document.getElementById('musicFileSelector').files
+      for (let i = 0; i < files.length; i++) {
+        const fileReader = new FileReader()
+        jsmediatags.read(files[i], {
+          onSuccess: (result) => {
+            console.log(result);
+            let rs = 'title' in result.tags
+            let newSong = {title: "", artist: "", album: "", picture: "", genre: "", year: "", songData: ""}
+            console.log(rs)
+            if('picture' in result.tags){
+              const { data, format } = result.tags.picture;
+              let base64String = "";
+              for (let i = 0; i < data.length; i++) {
+                base64String += String.fromCharCode(data[i]);
+              }
+              newSong.picture = `data:${data.format};base64,${window.btoa(base64String)}`;
             }
-            newSong.picture = `data:${data.format};base64,${window.btoa(base64String)}`;
+            else{
+              newSong.picture = "Unknown"
+            }
+            newSong.title = ('title' in result.tags) ? result.tags.title : files[i].name;
+            newSong.artist = ('artist' in result.tags) ? result.tags.artist : "Unknown";
+            newSong.album = ('album' in result.tags) ? result.tags.album : "Unknown";
+            newSong.genre = ('genre' in result.tags) ? result.tags.genre : "Unknown";
+            newSong.year = ('year' in result.tags) ? result.tags.year : "Unknown";
+            fileReader.readAsDataURL(files[i])
+            fileReader.onload = () => {
+              newSong.songData = fileReader.result
+              this.songs.push(newSong)
+              console.log('done')
+            }
+          },
+          onError:  (error) => {
+            console.log(error);
           }
-          else{
-            newSong.picture = "Unknown"
-          }
-          newSong.title = ('title' in result.tags) ? result.tags.title : file.name;
-          newSong.artist = ('artist' in result.tags) ? result.tags.artist : "Unknown";
-          newSong.album = ('album' in result.tags) ? result.tags.album : "Unknown";
-          newSong.genre = ('genre' in result.tags) ? result.tags.genre : "Unknown";
-          newSong.year = ('year' in result.tags) ? result.tags.year : "Unknown";
-          fileReader.readAsDataURL(file)
-          fileReader.onload = () => {
-            newSong.songData = fileReader.result
-            this.songs.push(newSong)
-            this.loadSong(this.songIndex)
-            console.log('done')
-          }
-        },
-        onError:  (error) => {
-          console.log(error);
-        }
-      })
-      
+        })
+      }
     },
     addSongsToPlaylist(){
       document.getElementById('musicFileSelector').click()
     },
     play(){
+      if (this.currentSong == "") {
+        this.loadSong(this.songIndex)
+        this.isPlaying = true
+        return
+      }
+      // if (document.querySelector('audio').) {
+        
+      // }
       document.getElementById('audio').play()
       this.isPlaying = true
       // console.log(document.getElementById('audio').duration)
@@ -167,10 +176,20 @@ export default {
       this.currentSongPlayTime = minutes + ":" + seconds
     },
     playNextSong(){
-
+      this.songIndex ++
+      if (this.songIndex == (this.songs.length)) {
+        this.songIndex = 0
+      }
+      this.currentSong = this.songs[this.songIndex]
+      document.getElementById('audio').src = this.currentSong.songData
     },
     playPreviousSong(){
-
+      this.songIndex --
+      if (this.songIndex == -1) {
+        this.songIndex = (this.songs.length -1)
+      }
+      this.currentSong = this.songs[this.songIndex]
+      document.getElementById('audio').src = this.currentSong.songData
     }
   },
   mounted(){
