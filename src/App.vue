@@ -4,8 +4,8 @@
       <h4 class="text-center py-1" style="border-bottom: 2px solid grey">Play</h4>
     </div>
     <div class="text-center" style="height: 20%; display: grid; place-items: center;">
-      <h5 class="mb-0" id="nowPlayingTitle">{{currentSong.title}}</h5>
-      <h6 id="nowPlayingSinger">{{currentSong.artist}}</h6>
+      <h5 class="mb-0" id="nowPlayingTitle">{{(currentSong == "") ? "Song Title" : currentSong.title}}</h5>
+      <h6 id="nowPlayingSinger">{{(currentSong == "") ? "artist" : currentSong.artist}}</h6>
     </div>
     <div class="d-flex justify-content-center align-items-center" style="height: 40%">
       <img :src="currentSong.picture" style="width: 150px; height: 150px; border-radius: 100%; border: 2px solid grey" alt="">
@@ -20,7 +20,7 @@
       <span>{{currentSongDuration}}</span>
     </div>
     <div class="controlBtnDiv d-flex justify-content-evenly" style="height: 20%">
-      <button id="shuffleBtn"><i class="fa fa-random" aria-hidden="true"></i></button>
+      <button id="shuffleBtn" @click="() => pickRandomSong('clicked')"><i id="shuffleBtnIcon" class="fa fa-random" aria-hidden="true"></i></button>
       <button id="previousBtn" @click="playPreviousSong"><i class="fa fa-step-backward" aria-hidden="true"></i></button>
       <button v-if="!isPlaying" @click="play" id="playBtn"><i class="fa fa-play-circle" aria-hidden="true"></i></button>
       <button v-if="isPlaying" @click="pause" id="pauseBtn"><i class="fa fa-pause-circle" aria-hidden="true"></i></button>
@@ -33,17 +33,18 @@
       <h4 class="text-center py-1" style="border-bottom: 2px solid grey">SONGS</h4>
     </div>
     <div class="songList">
+      <h4 class="text-center" v-if="songs.length == 0">No Song In Playlist</h4>
       <div v-for="(song, index) in songs" :key="index" class="my-1 so_ng p-2 d-flex justify-content-evenly align-items-center">
         <button @click="() => playThisSong(song)" class="d-flex justify-content-center align-item-center" style="width: 90%; background-color: transparent;">
           <div class="bg-primary" style="width: 50px; height: 50px; border-radius: 100%;">
             <img :src="(song.picture != 'Unknown') ? song.picture : '' " style="width: 50px; height: 50px;" alt="">
           </div>
-          <div style="width: 65%; text-align: left;" class="px-3">
+          <div style="width: 65%; text-align: left; padding-left: 10px" class="">
             <p class="m-0" style="font-size: 17px">{{song.title.slice(0,15)}}...</p>
             <p class="m-0" style="font-size: 14px">{{song.artist.slice(0,15)}}...</p>
           </div>
         </button>
-        <button @click="songMenu" style="width: 5%">
+        <button @click="() => removeSongFromPlaylist(song)" style="width: 5%">
           <i  class="fa fa-ellipsis-v"></i>
         </button>
       </div>
@@ -79,6 +80,7 @@ export default {
       songIndex: 0,
       isPlaying: false,
       loadSongData: false,
+      isRandom: false,
     }
   },
   methods:{
@@ -150,10 +152,12 @@ export default {
     playThisSong(song){
       if (this.currentSong == "") {
         this.loadSong(this.songs.indexOf(song))
+        this.songIndex = this.songs.indexOf(song)
         this.isPlaying = true
         return
       }
       this.currentSong = song
+      this.songIndex = this.songs.indexOf(song)
       // document.getElementById('audio').src = song.songData
       this.isPlaying = true
       console.log(song);
@@ -164,12 +168,8 @@ export default {
         this.isPlaying = true
         return
       }
-      // if (document.querySelector('audio').) {
-        
-      // }
       document.getElementById('audio').play()
       this.isPlaying = true
-      // console.log(document.getElementById('audio').duration)
     },
     pause(){
       document.getElementById('audio').pause()
@@ -177,7 +177,6 @@ export default {
     },
     updateSlider(){
       this.progressValue = document.getElementById('audio').currentTime
-      // document.querySelector('audio')
     },
     seek(){
       document.getElementById('audio').currentTime = this.progressValue
@@ -193,6 +192,10 @@ export default {
       this.currentSongPlayTime = minutes + ":" + seconds
     },
     playNextSong(){
+      if (this.isRandom == true) {
+        this.pickRandomSong()
+        return
+      }
       this.songIndex ++
       if (this.songIndex == (this.songs.length)) {
         this.songIndex = 0
@@ -208,8 +211,29 @@ export default {
       this.currentSong = this.songs[this.songIndex]
       document.getElementById('audio').src = this.currentSong.songData
     },
-    songMenu(){
+    removeSongFromPlaylist(song){
+      this.songs.splice(this.songs.indexOf(song), 1)
       console.log("song menu");
+    },
+    pickRandomSong(clicked){
+      if(this.currentSong == "")
+        return
+      if (clicked == "clicked") {
+        this.isRandom = !this.isRandom;
+        console.log(this.isRandom);
+        // this.songIndex = this.songs.indexOf(this.currentSong)
+        (this.isRandom == true) ? document.getElementById('shuffleBtnIcon').style.color = "black" : document.getElementById('shuffleBtnIcon').style.color = "gray"
+      }
+      if (this.isRandom == false) {
+        this.songIndex = this.songs.indexOf(this.currentSong)
+        return
+      }
+      if (this.isRandom == true && this.isPlaying == true && clicked == 'clicked') {
+        return
+      }
+      let randNum = Math.floor(Math.random() * this.songs.length)
+      this.currentSong = this.songs[randNum]
+      this.songIndex = this.songs.indexOf(this.currentSong)
     }
   },
   mounted(){
@@ -250,8 +274,12 @@ body {
       #previousBtn i, #nextBtn i, #shuffleBtn i, #playlistBtn svg{
         font-size: 30px;
       }
+      #shuffleBtn i{
+        color: gray
+      }
     }
     .songList{
+      min-height: 80%;
       max-height: 80%;
       overflow-y: scroll;
       button:nth-child(1){
